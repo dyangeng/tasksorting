@@ -1,110 +1,75 @@
+import random
+from typing import Tuple
 import matplotlib.pyplot as plt
-from collections import deque
-from typing import List, Tuple, Set, Dict
 
-# ------------------ Core classes (simplified) ------------------ #
-Coordinate = Tuple[int, int]  # (row, col)
+from models.map import GridMap, Coordinate
+from models.robot import Robot
 
-class GridMap:
-    def __init__(self, rows: int, cols: int):
-        self.rows = rows
-        self.cols = cols
-        self.workstations: Set[Coordinate] = set()
+# ---------------- world setup ----------------
 
-    def in_bounds(self, coord: Coordinate) -> bool:
-        r, c = coord
-        return 0 <= r < self.rows and 0 <= c < self.cols
+grid = GridMap(rows=20, cols=20)
+for ws in [(2, 2), (6, 7), (17, 15)]:
+    grid.add_workstation(ws)
 
-    def neighbours(self, coord: Coordinate) -> List[Coordinate]:
-        r, c = coord
-        candidates = [(r-1, c), (r+1, c), (r, c-1), (r, c+1)]
-        return [p for p in candidates if self.in_bounds(p)]
+random.seed(42)
+while len(grid.obstacles) < 10:
+    o = (random.randint(0, grid.rows - 1), random.randint(0, grid.cols - 1))
+    if o not in grid.workstations and o != (0, 0):
+        grid.add_obstacle(o)
 
-    def add_workstation(self, coord: Coordinate):
-        if not self.in_bounds(coord):
-            raise ValueError("Workstation outside grid")
-        self.workstations.add(coord)
+robot = Robot(grid=grid, start=(0, 0))
+for target in grid.workstations:
+    robot.move_to(target, smooth=True)
 
-class Robot:
-    def __init__(self, grid: GridMap, start: Coordinate):
-        self.grid = grid
-        self.pos = start
-        self.path: List[Coordinate] = [start]  # record path
+# ---------------- visualisation ----------------
 
-    def _shortest_path(self, target: Coordinate) -> List[Coordinate]:
-        if self.pos == target:
-            return []
-        visited: Set[Coordinate] = {self.pos}
-        prev: Dict[Coordinate, Coordinate] = {}
-        q = deque([self.pos])
-        while q:
-            cur = q.popleft()
-            for nb in self.grid.neighbours(cur):
-                if nb in visited:
-                    continue
-                visited.add(nb)
-                prev[nb] = cur
-                if nb == target:
-                    # reconstruct
-                    rev = []
-                    while nb != self.pos:
-                        rev.append(nb)
-                        nb = prev[nb]
-                    return list(reversed(rev))
-                q.append(nb)
-        return []
+def _plot(grid: GridMap, robot: Robot):
+    pts = robot.path
+    xs = [c + 0.5 for _, c in pts]
+    ys = [r + 0.5 for r, _ in pts]
 
-    def move_to(self, target: Coordinate):
-        for step in self._shortest_path(target):
-            self.pos = step
-            self.path.append(step)
+    fig, ax = plt.subplots(figsize=(6, 6))
 
-# ------------------ Build scenario ------------------ #
-g = GridMap(rows=10, cols=10)
-g.add_workstation((2, 2))
-g.add_workstation((6, 7))
-g.add_workstation((0, 9))
+    # grid lines
+    for x in range(grid.cols + 1):
+        ax.vlines(x, 0, grid.rows, linewidth=0.3)
+    for y in range(grid.rows + 1):
+        ax.hlines(y, 0, grid.cols, linewidth=0.3)
 
-robot = Robot(grid=g, start=(0, 0))
+    # obstacles
+    ox = [c + 0.5 for _, c in grid.obstacles]
+    oy = [r + 0.5 for r, _ in grid.obstacles]
+    ax.scatter(ox, oy, marker="X", s=60, label="Obstacle")
 
-tasks = [((2, 2), (6, 7)), ((6, 7), (0, 9))]
-for src, dst in tasks:
-    robot.move_to(src)
-    robot.move_to(dst)
+    # work‑stations
+    wx = [c + 0.5 for _, c in grid.workstations]
+    wy = [r + 0.5 for r, _ in grid.workstations]
+    ax.scatter(wx, wy, marker="s", s=160, label="Work‑station")
 
-full_path = robot.path
+    # robot trajectory line (for reference)
+    ax.plot(xs, ys, linewidth=1, linestyle="--", color="grey")
 
-# ------------------ Visualization ------------------ #
-fig, ax = plt.subplots(figsize=(6, 6))
+    # arrows for movement direction
+    for i in range(len(xs) - 1):
+        ax.annotate(
+            "",
+            xy=(xs[i + 1], ys[i + 1]),
+            xytext=(xs[i], ys[i]),
+            arrowprops=dict(arrowstyle="->", lw=1.5, color="tab:red"),
+        )
 
-# Draw grid
-for x in range(g.cols + 1):
-    ax.vlines(x, 0, g.rows, linewidth=0.5)
-for y in range(g.rows + 1):
-    ax.hlines(y, 0, g.cols, linewidth=0.5)
+    # start marker
+    ax.scatter(xs[0], ys[0], s=120, label="Start", color="tab:green", zorder=5)
 
-# Workstations
-ws_cols = [c for r, c in g.workstations]
-ws_rows = [r for r, c in g.workstations]
-ax.scatter([c + 0.5 for c in ws_cols], [r + 0.5 for r in ws_rows],
-           marker='s', s=300, label='Workstation')
+    ax.set_title("Robot Navigation (A* + Elastic‑Band)")
+    ax.set_aspect("equal")
+    ax.invert_yaxis()
+    ax.set_xticks(range(grid.cols))
+    ax.set_yticks(range(grid.rows))
+    ax.legend(loc="upper right", bbox_to_anchor=(1.25, 1))
 
-# Path
-path_cols = [c + 0.5 for r, c in full_path]
-path_rows = [r + 0.5 for r, c in full_path]
-ax.plot(path_cols, path_rows, linestyle='-', marker='o', label='Robot path')
+    plt.show()
 
-# Start and End markers
-ax.scatter(path_cols[0], path_rows[0], s=100, label='Start')
-ax.scatter(path_cols[-1], path_rows[-1], s=100, label='End')
 
-ax.set_xlim(0, g.cols)
-ax.set_ylim(0, g.rows)
-ax.set_aspect('equal')
-ax.invert_yaxis()
-ax.set_xticks(range(g.cols))
-ax.set_yticks(range(g.rows))
-ax.set_title("Robot Movement Path on Grid")
-ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1))
-
-plt.show()
+if __name__ == "__main__":
+    _plot(grid, robot)
