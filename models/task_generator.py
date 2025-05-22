@@ -74,7 +74,7 @@ def main(job_count: int, seed: int):
 # --------------------------------------------------------------------------- #
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--count", type=int, default=3,
+    ap.add_argument("--count", type=int, default=10,
                     help="how many **objects** to move (results in 2× rows)")
     ap.add_argument("--seed",  type=int, default=1)
     args = ap.parse_args()
