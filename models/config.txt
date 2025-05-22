@@ -1,0 +1,4 @@
+rows        = 20
+cols        = 20
+objects     = Widget, Gadget, Box, Bolt, Plate
+layout      = {"start": (0, 0), "end": (19, 19)}

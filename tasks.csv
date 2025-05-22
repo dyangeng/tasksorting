@@ -1,4 +1,7 @@
 station,objects,task_name,points
-A,"Widget",Pick Widget,10
-B,"Gadget",Assemble Gadget,20
-C,"Box",Pack Box,15
+3,Widget,Pick Widget,10
+10,Widget,Place Widget,10
+2,Gadget,Pick Gadget,10
+5,Gadget,Place Gadget,10
+2,Box,Pick Box,10
+8,Box,Place Box,10
