@@ -1,94 +1,113 @@
-import random
-from typing import Tuple
+"""Entry‑point: build map, load tasks, execute, print metrics, plot."""
+
+from pathlib import Path
+from typing import Dict, List
+import random, time
 import matplotlib.pyplot as plt
 
+from models.config_reader import CONFIG
+from models.stations import load_workstations
+from models.tasks import Task
 from models.map import GridMap, Coordinate
 from models.robot import Robot
-from models.tasks import Task
-# ---------------- world setup ----------------
+# from task_sorting.task_sorter import sort_tasks   # enable if desired
 
-# Map dimensions
-ROWS, COLS = 20, 20
+# ───────────────────── config values ──────────────────────
+ROWS: int = CONFIG["rows"]
+COLS: int = CONFIG["cols"]
+START: Coordinate = CONFIG["layout"]["start"]
+END:   Coordinate = CONFIG["layout"]["end"]
+
+WORKSTATIONS_CSV = Path(r"tasksorting\workstations.csv")
+TASKS_CSV        = Path(r"tasksorting\tasks.csv")
+
+# ───────────────────── world build ────────────────────────
+station_lookup: Dict[str, Coordinate] = load_workstations(WORKSTATIONS_CSV)
 
 grid = GridMap(rows=ROWS, cols=COLS)
-
-# Map station names → coordinates for easy lookup
-station_lookup: dict[str, Coordinate] = {
-    "A": (2, 2),
-    "B": (6, 7),
-    "C": (17, 15),
-}
 for coord in station_lookup.values():
     grid.add_workstation(coord)
 
-# Random obstacles (demo)
-random.seed(42)
-while len(grid.obstacles) < 10:
-    o = (random.randint(0, ROWS - 1), random.randint(0, COLS - 1))
-    if o not in grid.workstations and o != (0, 0):
-        grid.add_obstacle(o)
+# sprinkle random obstacles (optional demo)
+grid.generate_random_obstacles(10, forbid={START, END}, seed=42)
 
-robot = Robot(grid=grid, start=(0, 0))
+# instantiate robot once (no callable error)
+robot = Robot(grid=grid, start=START)
 
-# ---------------- load tasks ----------------
-
-# CSV file example path (update as needed)
-CSV_PATH = r"tasksorting\tasks.csv"  # e.g. station,objects,task_name,points
+# ───────────────────── task loading ───────────────────────
 try:
-    task_list = Task.from_csv(CSV_PATH)
+    task_list: List[Task] = Task.from_csv(TASKS_CSV)
 except FileNotFoundError:
-    # Fallback demo list if csv not present
+    print("tasks.csv missing – using demo list")
     task_list = [
-        Task("A", ["Widget"], "Pick Widget", 10),
-        Task("B", ["Gadget"], "Assemble Gadget", 20),
-        Task("C", ["Box"], "Pack Box", 15),
+        Task("A", ["Widget"],  "Pick Widget",     10),
+        Task("B", ["Gadget"],  "Assemble Gadget", 20),
+        Task("C", ["Box"],     "Pack Box",        15),
     ]
-    print("CSV not found – using demo tasks")
 
-# ---------------- execute tasks ----------------
+# Optional advanced ordering
+# task_list = sort_tasks(task_list, station_lookup, START, END)
 
-for t in task_list:
-    robot.execute_task(t, station_lookup)
+# ───────────────────── execute & log ──────────────────────
+print("=== RUN START ===")
+start_wall = time.perf_counter()
+prev_len = len(robot.path)
 
-print(f"Total score: {robot.score} pts")
+for task in task_list:
+    robot.execute_task(task, station_lookup)
+    cur_len = len(robot.path)
+    delta = cur_len - prev_len
+    prev_len = cur_len
+    print(f"[{cur_len:4}] +{delta:2}  {task.task_name:20} @ {task.station:3}  "
+          f"pos={robot.pos}  load={len(robot.carrying)}  score={robot.score}")
 
-# ---------------- visualisation ----------------
+# drive to END
+robot.move_to(END)
+print(f"[{len(robot.path):4}] +{len(robot.path)-prev_len:2}  Drive → END         pos={END}")
+
+# ───────────────────── metrics summary ────────────────────
+elapsed_ms = (time.perf_counter() - start_wall) * 1000
+loaded_steps = sum(robot.loaded_log)
+util_pct = loaded_steps / len(robot.loaded_log) * 100
+print(f"=== RUN END | Total dist {len(robot.path)} | Makespan {len(robot.path)} | "
+      f"Loaded {loaded_steps} ({util_pct:.1f}%) | Idle {len(robot.path)-loaded_steps} | "
+      f"Tasks {len(task_list)} | CPU wall {elapsed_ms:.1f} ms ===")
+
+# ───────────────────── plotting ───────────────────────────
 
 def _plot(grid: GridMap, robot: Robot):
-    pts = robot.path
-    xs = [c + 0.5 for _, c in pts]
-    ys = [r + 0.5 for r, _ in pts]
+    xs = [c + 0.5 for _, c in robot.path]
+    ys = [r + 0.5 for r, _ in robot.path]
 
     fig, ax = plt.subplots(figsize=(6, 6))
+    # grid lines
     for x in range(grid.cols + 1):
-        ax.vlines(x, 0, grid.rows, linewidth=0.3)
+        ax.vlines(x, 0, grid.rows, lw=0.3)
     for y in range(grid.rows + 1):
-        ax.hlines(y, 0, grid.cols, linewidth=0.3)
-
+        ax.hlines(y, 0, grid.cols, lw=0.3)
+    # obstacles
     ox = [c + 0.5 for _, c in grid.obstacles]
     oy = [r + 0.5 for r, _ in grid.obstacles]
     ax.scatter(ox, oy, marker="X", s=60, label="Obstacle")
-
+    # work‑stations
     wx = [c + 0.5 for _, c in grid.workstations]
     wy = [r + 0.5 for r, _ in grid.workstations]
     ax.scatter(wx, wy, marker="s", s=160, label="Work‑station")
-
-    # arrows
+    # path arrows
     for i in range(len(xs) - 1):
-        ax.annotate("", xy=(xs[i + 1], ys[i + 1]), xytext=(xs[i], ys[i]),
+        ax.annotate("", (xs[i+1], ys[i+1]), (xs[i], ys[i]),
                     arrowprops=dict(arrowstyle="->", lw=1.4, color="tab:red"))
+    # start & end markers
+    ax.scatter(xs[0], ys[0], s=120, color="tab:green", label="Start", zorder=5)
+    ax.scatter(END[1]+0.5, END[0]+0.5, marker="*", s=140, color="deepskyblue", label="End", zorder=5)
 
-    ax.scatter(xs[0], ys[0], s=120, label="Start", color="tab:green", zorder=5)
     ax.set_title("Robot Task Execution Path")
     ax.set_aspect("equal")
     ax.invert_yaxis()
     ax.set_xticks(range(grid.cols))
     ax.set_yticks(range(grid.rows))
     ax.legend(loc="upper right", bbox_to_anchor=(1.25, 1))
-
     plt.show()
-
 
 if __name__ == "__main__":
     _plot(grid, robot)
-

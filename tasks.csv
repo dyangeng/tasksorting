@@ -1,4 +1,21 @@
 station,objects,task_name,points
-A,"Widget",Pick Widget,10
-B,"Gadget",Assemble Gadget,20
-C,"Box",Pack Box,15
+3,A,Pick A,10
+10,A,Place A,10
+2,B,Pick B,10
+5,B,Place B,10
+2,C,Pick C,10
+8,C,Place C,10
+8,D,Pick D,10
+7,D,Place D,10
+4,E,Pick E,10
+2,E,Place E,10
+8,F,Pick F,10
+1,F,Place F,10
+7,G,Pick G,10
+10,G,Place G,10
+1,H,Pick H,10
+8,H,Place H,10
+5,I,Pick I,10
+4,I,Place I,10
+10,J,Pick J,10
+2,J,Place J,10

@@ -1,0 +1,4 @@
+rows        = 20
+cols        = 20
+objects     = A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P
+layout      = {"start": (0, 0), "end": (19, 19)}
