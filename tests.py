@@ -1,7 +1,7 @@
 from models.tasks import Task
 
 def test_from_csv_sorted():
-    tasks = Task.from_csv_sorted("tasks.csv")
+    tasks = Task.from_csv("tasks.csv")
     
     print("\n--- Sorted Tasks by Points ---")
     for task in tasks:

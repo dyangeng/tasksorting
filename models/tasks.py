@@ -53,30 +53,42 @@ class Task:
 
     # ──────────────── Private Instance Methods ────────────────
 
+    _visited_stations = set()  # Class-level variable to track visited stations
     def _calculate_points(self):
         """
         Calculate points based on the station, objects, and task name.
-        Customize this logic as needed.
+        If the station has already been visited, no base points are given.
         """
-        base_points = 100
+        base_points = 0
+
+        # Award base points only if station is new
+        station_id = self._station.upper() if isinstance(self._station, str) else str(self._station)
+        if station_id not in Task._visited_stations:
+            base_points += 100
+            Task._visited_stations.add(station_id)
+
+        # Add points based on number of objects
         base_points += len(self._objects) * 100
 
-        if isinstance(self._task_name, str):
-            task_lower = self._task_name.lower()
-            if "pick" in task_lower:
-                base_points += 100
-            elif "place" in task_lower:
-                base_points += 0
+        # Task-specific bonus
+        # if isinstance(self._task_name, str):
+        #     task_lower = self._task_name.lower()
+        #     if "pick" in task_lower:
+        #         base_points += 100
+        #     elif "place" in task_lower:
+        #         base_points += 0
 
-        if isinstance(self._station, str):
-            if "A" in self._station.upper():
-                base_points += 1
-            elif "B" in self._station.upper():
-                base_points += 0
-            else:
-                base_points -= 1
+        # Station-specific modifier
+        # if isinstance(self._station, str):
+        #     if "A" in self._station.upper():
+        #         base_points += 1
+        #     elif "B" in self._station.upper():
+        #         base_points += 0
+        #     else:
+        #         base_points -= 1
 
         return base_points
+
 
     def recalculate_points(self):
         """Recalculate points if task data is changed."""
