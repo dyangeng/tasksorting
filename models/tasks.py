@@ -1,10 +1,9 @@
 import csv
+from typing import List
+
 
 class Task:
-    """
-    Represents a task that includes a station, involved objects, 
-    task description, and associated point value.
-    """
+    """Represents a single pick/place or processing task."""
 
     def __init__(self, station, objects, task_name: str, points: int = None):
         self._station = station
@@ -48,11 +47,9 @@ class Task:
             raise ValueError("Points must be a non-negative integer.")
         self._points = value
 
-    # ──────────────── String Representation ────────────────
-
+    # ----------------------------------------------------
     def __repr__(self):
-        return (f"Task(station={self._station}, objects={self._objects}, "
-                f"task_name='{self._task_name}', points={self._points})")
+        return f"Task(station={self.station}, objects={self.objects}, task='{self.task_name}', pts={self.points})"
 
     # ──────────────── Private Instance Methods ────────────────
 
