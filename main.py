@@ -10,8 +10,8 @@ from models.stations import load_workstations
 from models.tasks import Task
 from models.map import GridMap, Coordinate
 from models.robot import Robot
-# from task_sorting.task_sorter import sort_tasks   # enable if desired
-
+#from task_sorting.task_sorter import sort_tasks   # enable if desired
+from task_sorting.hamiltonian import sort_tasks
 # ───────────────────── config values ──────────────────────
 ROWS: int = CONFIG["rows"]
 COLS: int = CONFIG["cols"]
@@ -40,26 +40,28 @@ try:
 except FileNotFoundError:
     print("tasks.csv missing – using demo list")
     task_list = [
-        Task("A", ["Widget"],  "Pick Widget",     10),
-        Task("B", ["Gadget"],  "Assemble Gadget", 20),
-        Task("C", ["Box"],     "Pack Box",        15),
+        Task("S1", ["A"], "Pick A",   10),
+        Task("S2", ["A"], "Place A",  10),
+        Task("S3", ["B"], "Pick B",   10),
+        Task("S4", ["B"], "Place B",  10),
     ]
-
 # Optional advanced ordering
-# task_list = sort_tasks(task_list, station_lookup, START, END)
+task_list = sort_tasks(task_list, station_lookup, START, END)
 
 # ───────────────────── execute & log ──────────────────────
 print("=== RUN START ===")
 start_wall = time.perf_counter()
 prev_len = len(robot.path)
 
+
 for task in task_list:
-    robot.execute_task(task, station_lookup)
+    success = robot.execute_task(task, station_lookup)
     cur_len = len(robot.path)
     delta = cur_len - prev_len
     prev_len = cur_len
     print(f"[{cur_len:4}] +{delta:2}  {task.task_name:20} @ {task.station:3}  "
-          f"pos={robot.pos}  load={len(robot.carrying)}  score={robot.score}")
+          f"pos={robot.pos}  load={len(robot.carrying)}  score={robot.score}  "
+          f"result={'success' if success else 'failure'}")
 
 # drive to END
 robot.move_to(END)

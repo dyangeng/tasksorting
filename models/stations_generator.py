@@ -31,7 +31,7 @@ def main(out_csv: str, seed: int):
         wr = csv.writer(f)
         wr.writerow(["station", "row", "col"])
         for i, (r, c) in enumerate(sorted(w_coords), 1):
-            wr.writerow([i, r, c])          # A, B, C, ...
+            wr.writerow([f"S{i}", r, c])          # A, B, C, ...
 
     print(f"✔ Saved {len(w_coords)} work-stations to {out_csv}")
     print(f"✔ Robot start position : {start}")
