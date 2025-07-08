@@ -10,8 +10,7 @@ from models.stations import load_workstations
 from models.tasks import Task
 from models.map import GridMap, Coordinate
 from models.robot import Robot
-#from task_sorting.task_sorter import sort_tasks   # enable if desired
-from task_sorting.hamiltonian import sort_tasks
+#from task_sorting.task_sorter import sort_tasks   # enable import sort_tasks
 # ───────────────────── config values ──────────────────────
 ROWS: int = CONFIG["rows"]
 COLS: int = CONFIG["cols"]
